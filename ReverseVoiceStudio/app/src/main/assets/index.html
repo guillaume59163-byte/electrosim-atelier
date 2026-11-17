@@ -1,0 +1,418 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#07110f">
+  <title>Reverse Voice</title>
+  <style>
+    :root { color-scheme: dark; --bg:#07110f; --panel:#10201d; --panel2:#132925; --line:#29443e; --text:#f3faf7; --muted:#a8bbb4; --mint:#20c997; --mint2:#83f1cd; --danger:#ff7b7b; }
+    * { box-sizing:border-box; }
+    body { margin:0; min-height:100vh; background:radial-gradient(circle at 88% -10%, #1a5145 0, transparent 32%), var(--bg); color:var(--text); font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif; }
+    .app { max-width:650px; margin:0 auto; padding:22px 16px 38px; }
+    header { display:flex; gap:14px; align-items:center; margin:5px 0 22px; }
+    .logo { width:48px; height:48px; border-radius:16px; display:grid; place-items:center; background:linear-gradient(145deg,var(--mint),#118b72); color:#05251d; font-size:25px; font-weight:900; box-shadow:0 10px 28px #0007; }
+    h1 { font-size:25px; line-height:1; letter-spacing:-.7px; margin:0 0 5px; }
+    header p { margin:0; color:var(--muted); font-size:13px; }
+    .card { border:1px solid var(--line); background:linear-gradient(145deg,#132622,#0c1917); border-radius:22px; padding:17px; margin:13px 0; box-shadow:0 12px 32px #0002; }
+    .card-title { font-weight:750; font-size:15px; margin:0 0 12px; letter-spacing:.1px; }
+    .controls { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+    button, select { border:0; font:inherit; font-weight:720; border-radius:14px; min-height:48px; transition:transform .12s ease, opacity .12s ease; }
+    button { cursor:pointer; color:#06231c; background:var(--mint); padding:0 14px; }
+    button:active { transform:scale(.975); }
+    button.secondary { color:var(--text); background:#203b35; border:1px solid #34534b; }
+    button.dark { color:var(--text); background:#172a26; border:1px solid #315047; }
+    button.danger { background:#5a282b; color:#ffd8d8; border:1px solid #864149; }
+    button:disabled { opacity:.42; cursor:not-allowed; transform:none; }
+    .wide { width:100%; margin-top:10px; }
+    .source-name { color:var(--mint2); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-weight:650; font-size:13px; min-height:19px; }
+    .subtle { color:var(--muted); font-size:12px; line-height:1.45; margin:9px 0 0; }
+    .switch-line { display:flex; align-items:center; justify-content:space-between; gap:18px; padding:8px 0; }
+    .switch-line strong { font-size:15px; }
+    .switch-line span { display:block; color:var(--muted); font-size:12px; margin-top:3px; }
+    .switch { position:relative; display:inline-block; width:52px; height:31px; flex:none; }
+    .switch input { opacity:0; width:0; height:0; }
+    .slider { position:absolute; cursor:pointer; inset:0; border-radius:40px; background:#3a504a; transition:.2s; }
+    .slider:before { content:""; position:absolute; height:23px; width:23px; left:4px; bottom:4px; background:#d9ebe5; border-radius:50%; transition:.2s; }
+    input:checked + .slider { background:var(--mint); }
+    input:checked + .slider:before { transform:translateX(21px); background:#073228; }
+    .field { margin-top:15px; }
+    label.field-label { display:flex; justify-content:space-between; color:var(--muted); font-size:12px; margin-bottom:8px; }
+    select { width:100%; color:var(--text); background:#1a302b; border:1px solid #34544b; padding:0 13px; }
+    input[type=range] { width:100%; accent-color:var(--mint); }
+    .speed-value { color:var(--mint2); font-weight:800; }
+    .wave { width:100%; height:90px; display:block; border-radius:14px; background:#081512; border:1px solid #274139; }
+    .preview-row { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+    .status { min-height:41px; padding:11px 13px; border-radius:13px; background:#0c1715; border:1px solid #254039; color:var(--muted); font-size:13px; line-height:1.3; }
+    .status.success { color:var(--mint2); border-color:#317564; }
+    .status.error { color:#ffb4b4; border-color:#7e4147; }
+    .pill { display:inline-flex; align-items:center; gap:5px; color:#a9d6c7; background:#15342d; border:1px solid #2c6859; border-radius:999px; padding:5px 9px; font-size:11px; font-weight:720; margin-top:12px; }
+    footer { color:#7f9890; text-align:center; font-size:11px; line-height:1.4; padding:9px 10px 0; }
+    @media (max-width:360px) { .controls,.preview-row { grid-template-columns:1fr; } }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <header>
+      <div class="logo">↶</div>
+      <div><h1>Reverse Voice</h1><p>Inverse un son, transforme la voix, exporte le résultat.</p></div>
+    </header>
+
+    <section class="card">
+      <p class="card-title">1. Choisis ton audio</p>
+      <div class="controls">
+        <button id="pickButton">🎵 Importer un son</button>
+        <button id="recordButton" class="secondary">● Enregistrer</button>
+      </div>
+      <input id="fileInput" type="file" accept="audio/*" hidden>
+      <div id="sourceName" class="source-name">Aucun audio chargé.</div>
+      <p class="subtle">MP3, WAV, M4A ou un enregistrement du micro. Le traitement reste dans le téléphone.</p>
+    </section>
+
+    <section class="card">
+      <p class="card-title">2. Transforme le son</p>
+      <div class="switch-line">
+        <div><strong>Lecture inversée</strong><span>Le son démarre par la fin.</span></div>
+        <label class="switch"><input id="reverseToggle" type="checkbox"><span class="slider"></span></label>
+      </div>
+      <div class="field">
+        <label class="field-label" for="effect"><span>Effet de voix</span><span>cumulable avec l’inversion</span></label>
+        <select id="effect">
+          <option value="normal">Normal</option>
+          <option value="deep">Voix grave — ralentit</option>
+          <option value="high">Voix aiguë — accélère</option>
+          <option value="robot">Robot</option>
+          <option value="echo">Écho</option>
+        </select>
+      </div>
+      <div class="field">
+        <label class="field-label" for="speed"><span>Vitesse de lecture</span><span id="speedValue" class="speed-value">1,00×</span></label>
+        <input id="speed" type="range" min="0.5" max="1.5" value="1" step="0.05">
+      </div>
+      <div class="pill">● Aperçu et export utilisent exactement les mêmes réglages</div>
+    </section>
+
+    <section class="card">
+      <p class="card-title">3. Écoute puis exporte</p>
+      <canvas id="waveform" class="wave" width="620" height="180" aria-label="Forme d’onde du son"></canvas>
+      <div class="preview-row" style="margin-top:10px">
+        <button id="playButton" class="dark" disabled>▶ Écouter l’aperçu</button>
+        <button id="stopButton" class="danger" disabled>■ Arrêter</button>
+      </div>
+      <button id="exportButton" class="wide" disabled>↓ Exporter en WAV</button>
+    </section>
+
+    <div id="status" class="status">Charge ou enregistre un audio pour commencer.</div>
+    <footer>Tout est traité localement. Aucun son n’est envoyé sur Internet.</footer>
+  </main>
+
+  <script>
+    const fileInput = document.getElementById('fileInput');
+    const pickButton = document.getElementById('pickButton');
+    const recordButton = document.getElementById('recordButton');
+    const reverseToggle = document.getElementById('reverseToggle');
+    const effectSelect = document.getElementById('effect');
+    const speedInput = document.getElementById('speed');
+    const speedValue = document.getElementById('speedValue');
+    const sourceName = document.getElementById('sourceName');
+    const playButton = document.getElementById('playButton');
+    const stopButton = document.getElementById('stopButton');
+    const exportButton = document.getElementById('exportButton');
+    const statusBox = document.getElementById('status');
+    const waveform = document.getElementById('waveform');
+    const waveContext = waveform.getContext('2d');
+
+    let audioContext;
+    let sourceBuffer = null;
+    let sourceNameValue = '';
+    let currentSource = null;
+    let recorder = null;
+    let recordStream = null;
+    let recordedChunks = [];
+
+    function setStatus(message, kind = '') {
+      statusBox.textContent = message;
+      statusBox.className = `status ${kind}`;
+    }
+
+    function getAudioContext() {
+      if (!audioContext) audioContext = new (window.AudioContext || window.webkitAudioContext)();
+      return audioContext;
+    }
+
+    function refreshButtons() {
+      const enabled = Boolean(sourceBuffer);
+      playButton.disabled = !enabled;
+      exportButton.disabled = !enabled;
+      stopButton.disabled = !currentSource;
+    }
+
+    function drawEmptyWave() {
+      waveContext.fillStyle = '#081512';
+      waveContext.fillRect(0, 0, waveform.width, waveform.height);
+      waveContext.strokeStyle = '#28453d';
+      waveContext.lineWidth = 2;
+      waveContext.beginPath();
+      waveContext.moveTo(0, waveform.height / 2);
+      waveContext.lineTo(waveform.width, waveform.height / 2);
+      waveContext.stroke();
+    }
+
+    function drawWave() {
+      drawEmptyWave();
+      if (!sourceBuffer) return;
+      const data = sourceBuffer.getChannelData(0);
+      const width = waveform.width;
+      const height = waveform.height;
+      const step = Math.max(1, Math.ceil(data.length / width));
+      const center = height / 2;
+      waveContext.strokeStyle = '#20c997';
+      waveContext.lineWidth = 2;
+      waveContext.beginPath();
+      for (let x = 0; x < width; x++) {
+        let min = 1, max = -1;
+        const start = x * step;
+        for (let i = 0; i < step && start + i < data.length; i++) {
+          const sample = data[start + i];
+          if (sample < min) min = sample;
+          if (sample > max) max = sample;
+        }
+        waveContext.moveTo(x, center + min * center * .85);
+        waveContext.lineTo(x, center + max * center * .85);
+      }
+      waveContext.stroke();
+    }
+
+    function formatDuration(seconds) {
+      const total = Math.max(0, Math.round(seconds));
+      return `${Math.floor(total / 60)}:${String(total % 60).padStart(2, '0')}`;
+    }
+
+    async function loadAudio(file) {
+      try {
+        setStatus('Décodage du son…');
+        const context = getAudioContext();
+        const bytes = await file.arrayBuffer();
+        sourceBuffer = await context.decodeAudioData(bytes.slice(0));
+        sourceNameValue = file.name || 'enregistrement';
+        sourceName.textContent = `${sourceNameValue} · ${formatDuration(sourceBuffer.duration)}`;
+        drawWave();
+        refreshButtons();
+        setStatus('Audio prêt. Régle l’effet, écoute puis exporte.', 'success');
+      } catch (error) {
+        sourceBuffer = null;
+        sourceName.textContent = 'Audio illisible.';
+        drawEmptyWave();
+        refreshButtons();
+        setStatus('Impossible de lire ce fichier. Essaie un MP3, WAV, M4A ou un enregistrement.', 'error');
+      }
+    }
+
+    function currentSettings() {
+      const effect = effectSelect.value;
+      const toneRate = effect === 'deep' ? .78 : effect === 'high' ? 1.30 : 1;
+      return {
+        reverse: reverseToggle.checked,
+        effect,
+        rate: Number(speedInput.value) * toneRate
+      };
+    }
+
+    function limit(value) { return Math.max(-1, Math.min(1, value)); }
+
+    function processAudio() {
+      if (!sourceBuffer) throw new Error('Aucun audio');
+      const settings = currentSettings();
+      const inputLength = sourceBuffer.length;
+      const channelCount = Math.min(2, Math.max(1, sourceBuffer.numberOfChannels));
+      const outputLength = Math.max(1, Math.ceil(inputLength / settings.rate));
+      const channels = [];
+
+      for (let channel = 0; channel < channelCount; channel++) {
+        const input = sourceBuffer.getChannelData(Math.min(channel, sourceBuffer.numberOfChannels - 1));
+        const output = new Float32Array(outputLength);
+        for (let i = 0; i < outputLength; i++) {
+          const position = i * settings.rate;
+          const sourcePosition = settings.reverse ? inputLength - 1 - position : position;
+          if (sourcePosition < 0 || sourcePosition >= inputLength) break;
+          const low = Math.floor(sourcePosition);
+          const high = Math.min(inputLength - 1, low + 1);
+          const fraction = sourcePosition - low;
+          output[i] = input[low] * (1 - fraction) + input[high] * fraction;
+        }
+
+        if (settings.effect === 'robot') {
+          const carrier = 46;
+          for (let i = 0; i < output.length; i++) {
+            const ring = .48 + .52 * Math.sin(2 * Math.PI * carrier * i / sourceBuffer.sampleRate);
+            output[i] = output[i] * ring;
+          }
+        }
+        if (settings.effect === 'echo') {
+          const delay = Math.floor(sourceBuffer.sampleRate * .22);
+          for (let i = delay; i < output.length; i++) output[i] = limit(output[i] + output[i - delay] * .44);
+        }
+        channels.push(output);
+      }
+
+      let peak = 0;
+      channels.forEach(channel => channel.forEach(sample => { peak = Math.max(peak, Math.abs(sample)); }));
+      if (peak > .96) channels.forEach(channel => {
+        for (let i = 0; i < channel.length; i++) channel[i] *= .96 / peak;
+      });
+      return { channels, sampleRate: sourceBuffer.sampleRate, length: outputLength };
+    }
+
+    function createPlaybackBuffer(processed) {
+      const context = getAudioContext();
+      const buffer = context.createBuffer(processed.channels.length, processed.length, processed.sampleRate);
+      processed.channels.forEach((channel, index) => buffer.copyToChannel(channel, index));
+      return buffer;
+    }
+
+    async function playPreview() {
+      try {
+        const context = getAudioContext();
+        await context.resume();
+        stopPreview();
+        const processed = processAudio();
+        currentSource = context.createBufferSource();
+        currentSource.buffer = createPlaybackBuffer(processed);
+        currentSource.connect(context.destination);
+        currentSource.onended = () => { currentSource = null; refreshButtons(); };
+        currentSource.start();
+        refreshButtons();
+        setStatus('Aperçu en cours…');
+      } catch (error) {
+        setStatus('Impossible de lancer l’aperçu.', 'error');
+      }
+    }
+
+    function stopPreview() {
+      if (currentSource) {
+        try { currentSource.stop(); } catch (_) { }
+        currentSource = null;
+      }
+      refreshButtons();
+    }
+
+    function writeText(view, offset, text) {
+      for (let i = 0; i < text.length; i++) view.setUint8(offset + i, text.charCodeAt(i));
+    }
+
+    function createWav(processed) {
+      const channels = processed.channels.length;
+      const bytesPerSample = 2;
+      const blockAlign = channels * bytesPerSample;
+      const dataSize = processed.length * blockAlign;
+      const buffer = new ArrayBuffer(44 + dataSize);
+      const view = new DataView(buffer);
+      writeText(view, 0, 'RIFF');
+      view.setUint32(4, 36 + dataSize, true);
+      writeText(view, 8, 'WAVE');
+      writeText(view, 12, 'fmt ');
+      view.setUint32(16, 16, true);
+      view.setUint16(20, 1, true);
+      view.setUint16(22, channels, true);
+      view.setUint32(24, processed.sampleRate, true);
+      view.setUint32(28, processed.sampleRate * blockAlign, true);
+      view.setUint16(32, blockAlign, true);
+      view.setUint16(34, 16, true);
+      writeText(view, 36, 'data');
+      view.setUint32(40, dataSize, true);
+      let offset = 44;
+      for (let i = 0; i < processed.length; i++) {
+        for (let channel = 0; channel < channels; channel++) {
+          const sample = limit(processed.channels[channel][i]);
+          view.setInt16(offset, sample < 0 ? sample * 0x8000 : sample * 0x7fff, true);
+          offset += 2;
+        }
+      }
+      return new Blob([buffer], { type: 'audio/wav' });
+    }
+
+    function exportName() {
+      const base = (sourceNameValue || 'reverse-voice').replace(/\.[^.]+$/, '').replace(/[^a-z0-9_-]+/gi, '_');
+      return `${base || 'reverse-voice'}_modifie.wav`;
+    }
+
+    function blobToBase64(blob) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(String(reader.result).split(',')[1]);
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
+      });
+    }
+
+    async function exportWav() {
+      try {
+        stopPreview();
+        setStatus('Préparation du WAV…');
+        const blob = createWav(processAudio());
+        const filename = exportName();
+        if (window.Android && typeof Android.saveWav === 'function') {
+          const encoded = await blobToBase64(blob);
+          setStatus('Enregistrement dans Téléchargements…');
+          Android.saveWav(encoded, filename);
+        } else {
+          const link = document.createElement('a');
+          link.href = URL.createObjectURL(blob);
+          link.download = filename;
+          link.click();
+          URL.revokeObjectURL(link.href);
+          setStatus('WAV exporté.', 'success');
+        }
+      } catch (error) {
+        setStatus('L’export a échoué. Essaie un audio plus court.', 'error');
+      }
+    }
+
+    async function startRecording() {
+      try {
+        if (!navigator.mediaDevices || !window.MediaRecorder) throw new Error('Micro indisponible');
+        recordStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        recordedChunks = [];
+        const preferredType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus') ? 'audio/webm;codecs=opus' : '';
+        recorder = preferredType ? new MediaRecorder(recordStream, { mimeType: preferredType }) : new MediaRecorder(recordStream);
+        recorder.ondataavailable = event => { if (event.data.size > 0) recordedChunks.push(event.data); };
+        recorder.onstop = async () => {
+          recordStream.getTracks().forEach(track => track.stop());
+          const blob = new Blob(recordedChunks, { type: recorder.mimeType || 'audio/webm' });
+          await loadAudio(new File([blob], `enregistrement_${Date.now()}.webm`, { type: blob.type }));
+          recordButton.textContent = '● Enregistrer';
+          recordButton.className = 'secondary';
+          recorder = null;
+        };
+        recorder.start();
+        recordButton.textContent = '■ Terminer';
+        recordButton.className = 'danger';
+        setStatus('Enregistrement en cours…');
+      } catch (error) {
+        setStatus('Le micro n’est pas disponible. Autorise-le puis réessaie.', 'error');
+      }
+    }
+
+    window.onMicrophonePermission = allowed => {
+      if (allowed) startRecording();
+      else setStatus('Autorisation du micro refusée.', 'error');
+    };
+    window.onNativeSaved = () => setStatus('WAV enregistré dans Téléchargements / Reverse Voice.', 'success');
+    window.onNativeSaveError = () => setStatus('Impossible d’enregistrer le WAV.', 'error');
+
+    pickButton.addEventListener('click', () => fileInput.click());
+    fileInput.addEventListener('change', event => { if (event.target.files[0]) loadAudio(event.target.files[0]); });
+    recordButton.addEventListener('click', () => {
+      if (recorder && recorder.state === 'recording') recorder.stop();
+      else if (window.Android && typeof Android.requestMicrophonePermission === 'function') Android.requestMicrophonePermission();
+      else startRecording();
+    });
+    speedInput.addEventListener('input', () => { speedValue.textContent = `${Number(speedInput.value).toFixed(2).replace('.', ',')}×`; });
+    playButton.addEventListener('click', playPreview);
+    stopButton.addEventListener('click', () => { stopPreview(); setStatus('Aperçu arrêté.'); });
+    exportButton.addEventListener('click', exportWav);
+    drawEmptyWave();
+    refreshButtons();
+  </script>
+</body>
+</html>
