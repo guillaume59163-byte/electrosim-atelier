@@ -129,6 +129,7 @@
     let recorder = null;
     let recordStream = null;
     let recordedChunks = [];
+    let nativeRecordingActive = false;
 
     function setStatus(message, kind = '') {
       statusBox.textContent = message;
@@ -393,9 +394,47 @@
       }
     }
 
+    function setNativeRecordingButton(active) {
+      recordButton.textContent = active ? '■ Terminer' : '● Enregistrer';
+      recordButton.className = active ? 'danger' : 'secondary';
+    }
+
+    async function readNativeRecording() {
+      const count = Number(Android.nativeRecordingChunkCount());
+      if (!count) throw new Error('Enregistrement vide');
+      const chunks = [];
+      for (let index = 0; index < count; index++) chunks.push(Android.nativeRecordingChunk(index));
+      const binary = atob(chunks.join(''));
+      const bytes = new Uint8Array(binary.length);
+      for (let index = 0; index < binary.length; index++) bytes[index] = binary.charCodeAt(index);
+      return new Blob([bytes], { type: 'audio/wav' });
+    }
+
     window.onMicrophonePermission = allowed => {
       if (allowed) startRecording();
       else setStatus('Autorisation du micro refusée.', 'error');
+    };
+    window.onNativeRecordingStarted = () => {
+      nativeRecordingActive = true;
+      setNativeRecordingButton(true);
+      setStatus('Enregistrement en cours…');
+    };
+    window.onNativeRecordingReady = async () => {
+      nativeRecordingActive = false;
+      setNativeRecordingButton(false);
+      try {
+        setStatus('Préparation de l’enregistrement…');
+        const blob = await readNativeRecording();
+        Android.clearNativeRecording();
+        await loadAudio(new File([blob], `enregistrement_${Date.now()}.wav`, { type: 'audio/wav' }));
+      } catch (error) {
+        setStatus('L’enregistrement n’a pas pu être chargé.', 'error');
+      }
+    };
+    window.onNativeRecordingError = () => {
+      nativeRecordingActive = false;
+      setNativeRecordingButton(false);
+      setStatus('Le micro n’a pas répondu. Ferme puis relance l’appli.', 'error');
     };
     window.onNativeSaved = () => setStatus('WAV enregistré dans Téléchargements / Reverse Voice.', 'success');
     window.onNativeSaveError = () => setStatus('Impossible d’enregistrer le WAV.', 'error');
@@ -403,7 +442,14 @@
     pickButton.addEventListener('click', () => fileInput.click());
     fileInput.addEventListener('change', event => { if (event.target.files[0]) loadAudio(event.target.files[0]); });
     recordButton.addEventListener('click', () => {
-      if (recorder && recorder.state === 'recording') recorder.stop();
+      if (window.Android && typeof Android.startNativeRecording === 'function') {
+        if (nativeRecordingActive) {
+          setStatus('Finalisation de l’enregistrement…');
+          Android.stopNativeRecording();
+        } else {
+          Android.startNativeRecording();
+        }
+      } else if (recorder && recorder.state === 'recording') recorder.stop();
       else if (window.Android && typeof Android.requestMicrophonePermission === 'function') Android.requestMicrophonePermission();
       else startRecording();
     });
