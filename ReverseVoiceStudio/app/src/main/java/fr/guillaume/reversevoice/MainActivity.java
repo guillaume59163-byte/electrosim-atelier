@@ -5,6 +5,7 @@ import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.content.ContentValues;
 import android.content.Context;
+import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.media.MediaScannerConnection;
 import android.net.Uri;
@@ -16,6 +17,7 @@ import android.util.Base64;
 import android.view.ViewGroup;
 import android.webkit.JavascriptInterface;
 import android.webkit.PermissionRequest;
+import android.webkit.ValueCallback;
 import android.webkit.WebChromeClient;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
@@ -28,7 +30,9 @@ import java.io.OutputStream;
 
 public class MainActivity extends Activity {
     private static final int RECORD_AUDIO_REQUEST = 731;
+    private static final int AUDIO_FILE_REQUEST = 732;
     private WebView webView;
+    private ValueCallback<Uri[]> fileChooserCallback;
 
     @SuppressLint({"SetJavaScriptEnabled", "AddJavascriptInterface"})
     @Override
@@ -64,6 +68,26 @@ public class MainActivity extends Activity {
                     }
                 });
             }
+
+            @Override
+            public boolean onShowFileChooser(WebView view, ValueCallback<Uri[]> callback,
+                                             WebChromeClient.FileChooserParams fileChooserParams) {
+                if (fileChooserCallback != null) {
+                    fileChooserCallback.onReceiveValue(null);
+                }
+                fileChooserCallback = callback;
+                Intent picker = new Intent(Intent.ACTION_OPEN_DOCUMENT);
+                picker.addCategory(Intent.CATEGORY_OPENABLE);
+                picker.setType("audio/*");
+                try {
+                    MainActivity.this.startActivityForResult(
+                            Intent.createChooser(picker, "Choisir un audio"), AUDIO_FILE_REQUEST);
+                    return true;
+                } catch (Exception error) {
+                    fileChooserCallback = null;
+                    return false;
+                }
+            }
         });
         webView.addJavascriptInterface(new AudioBridge(this), "Android");
         setContentView(webView);
@@ -86,6 +110,18 @@ public class MainActivity extends Activity {
             boolean allowed = grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED;
             sendMicrophonePermission(allowed);
         }
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode != AUDIO_FILE_REQUEST || fileChooserCallback == null) return;
+        Uri[] chosen = null;
+        if (resultCode == RESULT_OK && data != null && data.getData() != null) {
+            chosen = new Uri[]{data.getData()};
+        }
+        fileChooserCallback.onReceiveValue(chosen);
+        fileChooserCallback = null;
     }
 
     private class AudioBridge {
